@@ -1,0 +1,26 @@
+#!/usr/bin/env bpftrace
+
+/* statslatency measures latency of mlx5 stats update code and prints it as
+* power-of-two histogram
+*/
+
+BEGIN
+{
+    printf("Recording stats update time... Hit Ctrl-C to end.\n");
+}
+
+kprobe:mlx5_fc_stats_work
+{
+    @start[pid] = nsecs;
+}
+
+kretprobe:mlx5_fc_stats_work
+/@start[pid]/
+{
+    @usecs = hist((nsecs - @start[pid]) / 1000);
+}
+
+END
+{
+    clear(@start);
+}
