@@ -1,0 +1,31 @@
+#!/usr/bin/env bpftrace
+
+/*
+* updaterate Show per-second insertion and deletion rate of mlx5 TC filters.
+*
+*/
+
+BEGIN
+{
+    printf("Counting TC rules update... Hit Ctrl-C to end.\n");
+}
+
+kretprobe:mlx5e_configure_flower
+/retval == 0/
+{
+    @add[comm] = count();
+}
+
+kretprobe:mlx5e_delete_flower
+/retval == 0/
+{
+    @del[comm] = count();
+}
+
+interval:s:1
+{
+    print(@add);
+    print(@del);
+    clear(@add);
+    clear(@del);
+}
