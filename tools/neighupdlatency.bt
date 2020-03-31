@@ -1,0 +1,26 @@
+#!/usr/bin/env bpftrace
+
+/* neighupdlatency measures latency of mlx5 neigh update code and prints it as
+* power-of-two histogram
+*/
+
+BEGIN
+{
+    printf("Recording neigh update time... Hit Ctrl-C to end.\n");
+}
+
+kprobe:mlx5e_rep_neigh_update
+{
+    @start[pid] = nsecs;
+}
+
+kretprobe:mlx5e_rep_neigh_update
+/@start[pid]/
+{
+    @usecs = hist((nsecs - @start[pid]) / 1000);
+}
+
+END
+{
+    clear(@start);
+}
