@@ -1,0 +1,45 @@
+#!/usr/bin/env bpftrace
+
+/*
+* ct-offload-latency Generate histogram of netfilter flowtable offload addition and deletion tasks
+*
+*/
+
+BEGIN
+{
+    printf("Recording CT offload latency... Hit Ctrl-C to end.\n");
+}
+
+tracepoint:workqueue:workqueue_queue_work
+/ str(args->workqueue) == "nf_ft_offload_add" /
+{
+    @start_add[args->work] = nsecs;
+}
+
+tracepoint:workqueue:workqueue_execute_start
+/ @start_add[args->work] /
+{
+    $duration_us = (nsecs - @start_add[args->work]) / 1000;
+    @add_us = hist($duration_us);
+    delete(@start_add[args->work]);
+}
+
+tracepoint:workqueue:workqueue_queue_work
+/ str(args->workqueue) == "nf_ft_offload_del" /
+{
+    @start_del[args->work] = nsecs;
+}
+
+tracepoint:workqueue:workqueue_execute_start
+/ @start_del[args->work] /
+{
+    $duration_us = (nsecs - @start_del[args->work]) / 1000;
+    @del_us = hist($duration_us);
+    delete(@start_del[args->work]);
+}
+
+END
+{
+    clear(@start_add);
+    clear(@start_del);
+}
