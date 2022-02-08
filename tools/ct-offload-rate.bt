@@ -1,0 +1,32 @@
+#!/usr/bin/env bpftrace
+
+/*
+* ct-offload-rate Show per-second insertion and deletion rate of nf flowtable
+* hardware offload flows.
+*
+*/
+
+BEGIN
+{
+    printf("Counting CT offload update... Hit Ctrl-C to end.\n");
+}
+
+tracepoint:workqueue:workqueue_queue_work
+/ str(args->workqueue) == "nf_ft_offload_add" /
+{
+    @add = count();
+}
+
+tracepoint:workqueue:workqueue_queue_work
+/ str(args->workqueue) == "nf_ft_offload_del" /
+{
+    @del = count();
+}
+
+interval:s:1
+{
+    print(@add);
+    clear(@add);
+    print(@del);
+    clear(@del);
+}
